@@ -1,0 +1,12 @@
+pipeline {
+
+    stages {
+        stage('test') {
+            steps {
+                script {
+                    echo "test!"
+                }
+            }
+        }
+    }
+}

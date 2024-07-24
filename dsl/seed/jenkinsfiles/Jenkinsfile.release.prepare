@@ -12,13 +12,13 @@ pipeline {
         docker {
             image env.AGENT_DOCKER_BUILDER_IMAGE
             args env.AGENT_DOCKER_BUILDER_ARGS
-            label util.avoidFaultyNodes('ubuntu')
+//            label util.avoidFaultyNodes('ubuntu')
         }
     }
 
     environment {
-        CI_EMAIL_TO = credentials("${JENKINS_EMAIL_CREDS_ID}")
-        PR_BRANCH_HASH = "${util.generateHash(10)}"
+//        CI_EMAIL_TO = credentials("${JENKINS_EMAIL_CREDS_ID}")
+//        PR_BRANCH_HASH = "${util.generateHash(10)}"
     }
 
     stages {
@@ -35,16 +35,16 @@ pipeline {
             }
         }
 
-        stage('Create release branches') {
-            steps {
-                script {
-                    List repositories = getRepositoriesToBranch()
-                    createBranches(repositories)
-
-                    sendNotification("Branches have been created for repositories: ${repositories.collect { "${it.name}:${it.branch}" }.join(', ')}")
-                }
-            }
-        }
+//        stage('Create release branches') {
+//            steps {
+//                script {
+//                    List repositories = getRepositoriesToBranch()
+//                    createBranches(repositories)
+//
+//                    sendNotification("Branches have been created for repositories: ${repositories.collect { "${it.name}:${it.branch}" }.join(', ')}")
+//                }
+//            }
+//        }
 
         stage('Setup branch seed config') {
             steps {
@@ -69,122 +69,125 @@ pipeline {
                             }
                         }
 
+                        // Update agent docker image tag with the seed branch
+                        branchConfig.agent.docker.image = branchConfig.agent.docker.image.replace('main-latest', getSeedRepoReleaseBranch() + '-latest')
+
                         echo "Write dsl branch_config => ${branchConfig}"
                         sh "rm -f ${branchConfigFile}"
                         writeYaml file: "${branchConfigFile}", data: branchConfig, overwrite: true
 
-                        if (githubscm.isThereAnyChanges()) {
-                            sh 'git diff'
-                            githubscm.setUserConfigFromCreds(getMainBranchConfigFileGitAuthorPushCredentialsId())
-                            githubscm.commitChanges('Setup DSL branch config after cut-off')
-                            githubscm.pushObject('origin', newBranch, getMainBranchConfigFileGitAuthorPushCredentialsId())
-
-                            sendNotification("Branch config on ${newBranch} has been updated with correct configuration")
-                        } else {
-                            println '[WARN] No changes to commit'
-                        }
+//                        if (githubscm.isThereAnyChanges()) {
+//                            sh 'git diff'
+//                            githubscm.setUserConfigFromCreds(getMainBranchConfigFileGitAuthorPushCredentialsId())
+//                            githubscm.commitChanges('Setup DSL branch config after cut-off')
+//                            githubscm.pushObject('origin', newBranch, getMainBranchConfigFileGitAuthorPushCredentialsId())
+//
+//                            sendNotification("Branch config on ${newBranch} has been updated with correct configuration")
+//                        } else {
+//                            println '[WARN] No changes to commit'
+//                        }
                     }
                 }
             }
         }
 
-        stage('Branch seed repository') {
-            steps {
-                script {
-                    // Create seed branch if not already exist
-                    dir(checkoutSeedRepo()) {
-                        getOrCreateGitBranch(getSeedRepoReleaseBranch(), "${SEED_PUSH_CREDENTIALS_ID}")
-                    }
-                }
-            }
-        }
+//        stage('Branch seed repository') {
+//            steps {
+//                script {
+//                    // Create seed branch if not already exist
+//                    dir(checkoutSeedRepo()) {
+//                        getOrCreateGitBranch(getSeedRepoReleaseBranch(), "${SEED_PUSH_CREDENTIALS_ID}")
+//                    }
+//                }
+//            }
+//        }
 
-        stage('Update main seed config') {
-            steps {
-                script {
-                    String newBranch = getBranchConfigReleaseBranch()
-                    String seedConfigFile = env.SEED_CONFIG_FILE_PATH
+//        stage('Update main seed config') {
+//            steps {
+//                script {
+//                    String newBranch = getBranchConfigReleaseBranch()
+//                    String seedConfigFile = env.SEED_CONFIG_FILE_PATH
+//
+//                    dir(checkoutMainSeedConfigFileRepo()) {
+//                        def seedConfig = readYaml file: seedConfigFile
+//
+//                        if (!seedConfig.git.branches.find { it.name == getEcosystemReleaseBranch() }) {
+//                            def branchConfig = [
+//                                name: getEcosystemReleaseBranch(),
+//                                seed: [
+//                                    branch: getSeedRepoReleaseBranch(),
+//                                ]
+//                            ]
+//                            if (newBranch != getEcosystemReleaseBranch()) {
+//                                branchConfig.seed.config_file = [
+//                                    git: [
+//                                        branch: newBranch
+//                                    ]
+//                                ]
+//                            }
+//                            seedConfig.git.branches.add(branchConfig)
+//                        }
+//
+//                        echo "Write seed config => ${seedConfig}"
+//                        sh "rm ${seedConfigFile}"
+//                        writeYaml file: seedConfigFile, data: seedConfig, overwrite: true
+//
+//                        if (githubscm.isThereAnyChanges()) {
+//                            String prBranch = getPRBranch(getEcosystemReleaseBranch())
+//
+//                            githubscm.createBranch(prBranch)
+//                            sh 'git diff'
+//                            String commitMsg = "Add release branch ${getEcosystemReleaseBranch()} after cut-off"
+//                            githubscm.setUserConfigFromCreds(env.SEED_CONFIG_FILE_GIT_AUTHOR_PUSH_CREDS_ID)
+//                            githubscm.commitChanges(commitMsg)
+//                            githubscm.pushObject('origin', prBranch, env.SEED_CONFIG_FILE_GIT_AUTHOR_PUSH_CREDS_ID)
+//                            // Create PR
+//                            def prBody = "Generated by ${BUILD_URL}"
+//                            // raise a PR by another user to allow approval by the robot user which is a committer
+//                            String prLink = githubscm.createPR(commitMsg, prBody, env.SEED_CONFIG_FILE_GIT_BRANCH, env.SEED_CONFIG_FILE_GIT_AUTHOR_CREDS_ID)
+//                            approveAndMergePR(prLink)
+//                            sendNotification("Main config has been updated with release branch ${getEcosystemReleaseBranch()}")
+//                        } else {
+//                            println '[WARN] No changes to commit'
+//                        }
+//                    }
+//                }
+//            }
+//        }
 
-                    dir(checkoutMainSeedConfigFileRepo()) {
-                        def seedConfig = readYaml file: seedConfigFile
-
-                        if (!seedConfig.git.branches.find { it.name == getEcosystemReleaseBranch() }) {
-                            def branchConfig = [
-                                name: getEcosystemReleaseBranch(),
-                                seed: [
-                                    branch: getSeedRepoReleaseBranch(),
-                                ]
-                            ]
-                            if (newBranch != getEcosystemReleaseBranch()) {
-                                branchConfig.seed.config_file = [
-                                    git: [
-                                        branch: newBranch
-                                    ]
-                                ]
-                            }
-                            seedConfig.git.branches.add(branchConfig)
-                        }
-
-                        echo "Write seed config => ${seedConfig}"
-                        sh "rm ${seedConfigFile}"
-                        writeYaml file: seedConfigFile, data: seedConfig, overwrite: true
-
-                        if (githubscm.isThereAnyChanges()) {
-                            String prBranch = getPRBranch(getEcosystemReleaseBranch())
-
-                            githubscm.createBranch(prBranch)
-                            sh 'git diff'
-                            String commitMsg = "Add release branch ${getEcosystemReleaseBranch()} after cut-off"
-                            githubscm.setUserConfigFromCreds(env.SEED_CONFIG_FILE_GIT_AUTHOR_PUSH_CREDS_ID)
-                            githubscm.commitChanges(commitMsg)
-                            githubscm.pushObject('origin', prBranch, env.SEED_CONFIG_FILE_GIT_AUTHOR_PUSH_CREDS_ID)
-                            // Create PR
-                            def prBody = "Generated by ${BUILD_URL}"
-                            // raise a PR by another user to allow approval by the robot user which is a committer
-                            String prLink = githubscm.createPR(commitMsg, prBody, env.SEED_CONFIG_FILE_GIT_BRANCH, env.SEED_CONFIG_FILE_GIT_AUTHOR_CREDS_ID)
-                            approveAndMergePR(prLink)
-                            sendNotification("Main config has been updated with release branch ${getEcosystemReleaseBranch()}")
-                        } else {
-                            println '[WARN] No changes to commit'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Call setup jobs') {
-            parallel {
-                stage('Call init job on new branch') {
-                    steps {
-                        script {
-                            String newBranch = getEcosystemReleaseBranch()
-                            sendNotification("Waiting for setup branch job on newly created release branch '${newBranch}' and calling it once available.\n**Please wait for the job to be successful before performing any action on the release branch...**")
-                            List buildParams = []
-                            def job = [:]
-                            try {
-                                // Retry 20 times every 5 min
-                                retry(20) {
-                                    sleep 300
-                                    echo "Call job './${newBranch}/setup-branch/0-setup-branch' with buildParams ${buildParams}"
-                                    job = build(job: "./${newBranch}/setup-branch/0-setup-branch", wait: true, parameters: buildParams, propagate: false)
-                                }
-                                if(job.result != 'SUCCESS') {
-                                    error "Job ended with unsuccessful result. Please review..."
-                                }
-                                sendNotification("Setup branch job on newly created release branch '${newBranch}' finished successfully. ")
-                            } catch (err) {
-                                unstable("Error executing the ${newBranch} setup job ...")
-                                String msg = "ERROR: Setup branch job on newly created release branch '${newBranch}' was unsuccessful."
-                                if(job) {
-                                    msg += "\nPlease review job ${job.absoluteUrl}..."
-                                }
-                                sendNotification(msg)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+//        stage('Call setup jobs') {
+//            parallel {
+//                stage('Call init job on new branch') {
+//                    steps {
+//                        script {
+//                            String newBranch = getEcosystemReleaseBranch()
+//                            sendNotification("Waiting for setup branch job on newly created release branch '${newBranch}' and calling it once available.\n**Please wait for the job to be successful before performing any action on the release branch...**")
+//                            List buildParams = []
+//                            def job = [:]
+//                            try {
+//                                // Retry 20 times every 5 min
+//                                retry(20) {
+//                                    sleep 300
+//                                    echo "Call job './${newBranch}/setup-branch/0-setup-branch' with buildParams ${buildParams}"
+//                                    job = build(job: "./${newBranch}/setup-branch/0-setup-branch", wait: true, parameters: buildParams, propagate: false)
+//                                }
+//                                if(job.result != 'SUCCESS') {
+//                                    error "Job ended with unsuccessful result. Please review..."
+//                                }
+//                                sendNotification("Setup branch job on newly created release branch '${newBranch}' finished successfully. ")
+//                            } catch (err) {
+//                                unstable("Error executing the ${newBranch} setup job ...")
+//                                String msg = "ERROR: Setup branch job on newly created release branch '${newBranch}' was unsuccessful."
+//                                if(job) {
+//                                    msg += "\nPlease review job ${job.absoluteUrl}..."
+//                                }
+//                                sendNotification(msg)
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
     }
     post {
         unsuccessful {
@@ -228,27 +231,27 @@ List getRepositoriesToBranch() {
     return repositoriesToBranch
 }
 
-void createBranches(List repositories) {
-    repositories.each { repoConfig ->
-        String repoName = repoConfig.name
-        String baseBranch = repoConfig.branch
-        String releaseBranch = getReleaseBranchFromRepository(repoConfig.name)
-        String gitAuthorCredsId = repoConfig.author?.credentials_id ?: readMainBranchConfig().git.author.credentials_id
-        assert gitAuthorCredsId : "Cannot find any credentials Id for git author ${repoConfig.author.name}. Please check your branch seed config file."
-        String gitAuthorPushCredsId = repoConfig.author?.push?.credentials_id ?: readMainBranchConfig().git.author.push.credentials_id
-        assert gitAuthorPushCredsId : "Cannot find any push credentials Id for git author ${repoConfig.author.name}. Please check your branch seed config file."
-        String gitAuthor = repoConfig.author?.name ?: readMainBranchConfig().git.author.name
-
-        echo "Checkout repo ${gitAuthor}/${repoName} on branch ${baseBranch}"
-        dir(repoName) {
-            deleteDir()
-            checkout(githubscm.resolveRepository(repoName, gitAuthor, baseBranch, false, gitAuthorCredsId))
-            getOrCreateGitBranch(releaseBranch, gitAuthorPushCredsId)
-        }
-        // Update the branch with the new release branch
-        repoConfig.branch = releaseBranch
-    }
-}
+//void createBranches(List repositories) {
+//    repositories.each { repoConfig ->
+//        String repoName = repoConfig.name
+//        String baseBranch = repoConfig.branch
+//        String releaseBranch = getReleaseBranchFromRepository(repoConfig.name)
+//        String gitAuthorCredsId = repoConfig.author?.credentials_id ?: readMainBranchConfig().git.author.credentials_id
+//        assert gitAuthorCredsId : "Cannot find any credentials Id for git author ${repoConfig.author.name}. Please check your branch seed config file."
+//        String gitAuthorPushCredsId = repoConfig.author?.push?.credentials_id ?: readMainBranchConfig().git.author.push.credentials_id
+//        assert gitAuthorPushCredsId : "Cannot find any push credentials Id for git author ${repoConfig.author.name}. Please check your branch seed config file."
+//        String gitAuthor = repoConfig.author?.name ?: readMainBranchConfig().git.author.name
+//
+//        echo "Checkout repo ${gitAuthor}/${repoName} on branch ${baseBranch}"
+//        dir(repoName) {
+//            deleteDir()
+//            checkout(githubscm.resolveRepository(repoName, gitAuthor, baseBranch, false, gitAuthorCredsId))
+//            getOrCreateGitBranch(releaseBranch, gitAuthorPushCredsId)
+//        }
+//        // Update the branch with the new release branch
+//        repoConfig.branch = releaseBranch
+//    }
+//}
 
 void getOrCreateGitBranch(String branch, String credentialsId) {
     sh 'git fetch origin'
@@ -259,26 +262,26 @@ void getOrCreateGitBranch(String branch, String credentialsId) {
     } else {
         echo "Branch ${branch} does not exist ... gonna create it"
         githubscm.createBranch(branch)
-        githubscm.pushObject('origin', branch,  credentialsId)
+//        githubscm.pushObject('origin', branch,  credentialsId)
     }
 }
 
-String getPRBranch(String newConfigEntry) {
-    return "configure-branch-${newConfigEntry}-${env.PR_BRANCH_HASH}"
-}
+//String getPRBranch(String newConfigEntry) {
+//    return "configure-branch-${newConfigEntry}-${env.PR_BRANCH_HASH}"
+//}
 
-void approveAndMergePR(String prLink) {
-    if (prLink?.trim()) {
-        githubscm.approvePR(prLink, env.SEED_CONFIG_FILE_GIT_AUTHOR_PUSH_CREDS_ID)
-        githubscm.mergePR(prLink, env.SEED_CONFIG_FILE_GIT_AUTHOR_PUSH_CREDS_ID)
-    }
-}
+//void approveAndMergePR(String prLink) {
+//    if (prLink?.trim()) {
+//        githubscm.approvePR(prLink, env.SEED_CONFIG_FILE_GIT_AUTHOR_PUSH_CREDS_ID)
+//        githubscm.mergePR(prLink, env.SEED_CONFIG_FILE_GIT_AUTHOR_PUSH_CREDS_ID)
+//    }
+//}
 
 void sendNotification(String body) {
     echo 'Send Notification'
     echo body
-    emailext body: body, subject: "[${getEcosystemReleaseBranch()}] ${getEcosystemMainProject()}",
-                to: env.CI_EMAIL_TO
+//    emailext body: body, subject: "[${getEcosystemReleaseBranch()}] ${getEcosystemMainProject()}",
+//                to: env.CI_EMAIL_TO
 }
 
 String getProjectFromRepository(String repository) {
