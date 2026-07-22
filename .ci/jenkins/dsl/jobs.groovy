@@ -39,7 +39,7 @@ if (isMainStream()) {
     KogitoJobUtils.createQuarkusPlatformUpdateToolsJob(this, 'kogito')
 
     KogitoJobUtils.createMainQuarkusUpdateToolsJob(this,
-        [ 'kogito-runtimes', 'kogito-examples', 'kogito-docs', 'kogito-images' ],
+        [ 'kogito-examples', 'kogito-docs', 'kogito-images' ],
         [ 'radtriste', 'cristianonicolai' ]
     )
 }
@@ -201,7 +201,6 @@ void setupZipSourcesJob() {
         parameters {
             textParam('SOURCES_REPOSITORIES',
                     '''incubator-kie-drools
-incubator-kie-kogito-runtimes
 incubator-kie-kogito-apps
 incubator-kie-kogito-images
 incubator-kie-tools

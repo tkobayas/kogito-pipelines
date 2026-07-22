@@ -72,7 +72,6 @@ class TestJenkinsfileNightly extends SingleFileDeclarativePipelineTest {
         runJenkinsfileAndAssertSuccess()
 
         assertDeployBuildCalls([
-            'kogito-runtimes' : [:],
             'kogito-apps' : [:],
             'kogito-examples': [:],
         ])
@@ -92,7 +91,6 @@ class TestJenkinsfileNightly extends SingleFileDeclarativePipelineTest {
         runJenkinsfileAndAssertSuccess()
 
         assertDeployBuildCalls([
-            'kogito-runtimes' : [:],
             'kogito-apps' : [:],
             'kogito-examples': [:],
         ], true)
@@ -105,7 +103,7 @@ class TestJenkinsfileNightly extends SingleFileDeclarativePipelineTest {
     @Test
     void deploy_failing() throws Exception {
         helper.registerAllowedMethod('build', [Map.class], { map ->
-            if (map.get('job') == 'kogito-runtimes.build-and-deploy') {
+            if (map.get('job') == 'kogito-apps.build-and-deploy') {
                 return [
                     result: 'FAILURE',
                     absoluteUrl: 'URL',
@@ -120,7 +118,6 @@ class TestJenkinsfileNightly extends SingleFileDeclarativePipelineTest {
         runJenkinsfileAndAssertUnstable()
 
         assertDeployBuildCalls([
-            'kogito-runtimes' : [:],
             'kogito-apps' : [:],
             'kogito-examples': [:],
         ])
@@ -148,7 +145,6 @@ class TestJenkinsfileNightly extends SingleFileDeclarativePipelineTest {
         runJenkinsfileAndAssertUnstable()
 
         assertDeployBuildCalls([
-            'kogito-runtimes' : [:],
             'kogito-apps' : [:],
             'kogito-examples': [:],
         ])
